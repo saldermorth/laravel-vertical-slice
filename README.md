@@ -1,66 +1,159 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Vertical Slice Architecture
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project demonstrates a vertical slice architecture implementation for Laravel 12+, organizing code by feature rather than technical concerns.
 
-## About Laravel
+## What is Vertical Slice Architecture?
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Vertical slice architecture organizes code by feature or "slice" rather than by technical layer. Each slice contains everything needed for a specific feature:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+-   Controllers
+-   Requests
+-   Models
+-   Views
+-   Actions/Handlers
+-   Tests
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+This approach offers several benefits:
 
-## Learning Laravel
+-   **Improved cohesion**: Related code stays together
+-   **Reduced coupling**: Features are isolated from each other
+-   **Easier maintenance**: Changes to one feature have minimal impact on others
+-   **Better scalability**: Teams can work on different features independently
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Project Structure
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```
+app/
+└── Slices/
+    └── CreateOrder/
+        ├── Http/
+        │   ├── CreateOrderController.php
+        │   ├── CreateOrderRequest.php
+        │   └── routes.php
+        ├── Actions/
+        │   └── CreateOrderHandler.php
+        ├── Models/
+        │   └── CreateOrder.php
+        ├── Views/
+        │   └── form.blade.php
+        ├── Tests/
+        │   └── CreateOrderTest.php
+        └── Providers/
+            └── CreateOrderServiceProvider.php
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Getting Started
 
-## Laravel Sponsors
+### Prerequisites
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+-   PHP 8.2+
+-   Composer
+-   Laravel 12+
 
-### Premium Partners
+### Installation
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+1. Clone the repository
+
+```bash
+git clone https://github.com/yourusername/laravel-vertical-slice.git
+cd laravel-vertical-slice
+```
+
+2. Install dependencies
+
+```bash
+composer install
+```
+
+3. Copy environment file and set up your database
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+4. Run migrations
+
+```bash
+php artisan migrate
+```
+
+## Creating a New Slice
+
+This project includes a custom Artisan command to generate new slices:
+
+```bash
+php artisan make:slice YourFeatureName
+```
+
+This will create all necessary files and directories for your feature slice.
+
+To also generate a migration for your feature:
+
+```bash
+php artisan make:slice YourFeatureName --migration
+```
+
+## How It Works
+
+### Service Provider Auto-Discovery
+
+Service providers from each slice are automatically discovered and registered in `bootstrap/app.php`:
+
+```php
+// Dynamically discover slice service providers
+$slicesDir = dirname(__DIR__) . '/app/Slices';
+$providers = [];
+
+if (is_dir($slicesDir)) {
+    $slices = array_filter(glob($slicesDir . '/*'), 'is_dir');
+    foreach ($slices as $slice) {
+        $sliceName = basename($slice);
+        $providerPath = "{$slice}/Providers/{$sliceName}ServiceProvider.php";
+        if (file_exists($providerPath)) {
+            $providers[] = "App\\Slices\\{$sliceName}\\Providers\\{$sliceName}ServiceProvider";
+        }
+    }
+}
+```
+
+### Route Auto-Loading
+
+Routes from each slice are automatically loaded in `bootstrap/app.php`:
+
+```php
+->withRouting(
+    web: function() {
+        require __DIR__ . '/../routes/web.php';
+
+        // Load slice routes
+        $slicesDir = dirname(__DIR__) . '/app/Slices';
+        if (is_dir($slicesDir)) {
+            $slices = array_filter(glob($slicesDir . '/*'), 'is_dir');
+            foreach ($slices as $slice) {
+                $routesFile = "{$slice}/Http/routes.php";
+                if (file_exists($routesFile)) {
+                    require $routesFile;
+                }
+            }
+        }
+    },
+    // ...
+)
+```
+
+## Best Practices
+
+1. **Keep slices independent**: Minimize dependencies between slices
+2. **Use interfaces for cross-slice communication**: Define clear contracts between slices
+3. **Shared code**: Place shared functionality in a `Shared` slice
+4. **Think in features**: Design your slices around user features, not technical concerns
+5. **Test slice boundaries**: Write tests that verify each slice works correctly in isolation
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License - see the LICENSE file for details.
