@@ -65,8 +65,6 @@ class MakeSliceCommand extends Command
         }
 
         $this->info("Slice '{$name}' created successfully!");
-        $this->info("Remember to register the service provider in config/app.php:");
-        $this->info("App\\Slices\\{$name}\\Providers\\{$name}ServiceProvider::class");
     }
 
     protected function controllerStub($name)
